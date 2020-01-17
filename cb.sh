@@ -1,6 +1,6 @@
 #!/bin/bash
 #########################################################################
-# Title:         Cloudbox Script                                        #
+# Title:         Cloudbox: CB Script                                    #
 # Author(s):     desimaniac, chazlarson                                 #
 # URL:           https://github.com/cloudbox/cb                         #
 # --                                                                    #
@@ -16,10 +16,29 @@ if [ $EUID != 0 ]; then
     exit $?
 fi
 
+################################
 # Variables
-CLOUDBOX_REPO="/srv/git/cloudbox"
+################################
 
-function git_fetch_and_reset () {
+#Ansible
+ANSIBLE_PLAYBOOK_BINARY_PATH="/usr/local/bin/ansible-playbook"
+
+# Cloudbox
+CLOUDBOX_REPO_PATH="/srv/git/cloudbox"
+CLOUDBOX_PLAYBOOK_PATH="$CLOUDBOX_REPO_PATH/cloudbox.yml"
+CLOUDBOX_LOGFILE_PATH="$CLOUDBOX_REPO_PATH/cloudbox.log"
+
+# Community
+COMMUNITY_REPO_PATH="/opt/community"
+COMMUNITY_PLAYBOOK_PATH="$COMMUNITY_REPO_PATH/community.yml"
+COMMUNITY_LOGFILE_PATH="$COMMUNITY_REPO_PATH/community.log"
+
+################################
+# Functions
+################################
+
+git_fetch_and_reset () {
+
     git fetch --quiet >/dev/null
     git clean --quiet -df >/dev/null
     git reset --quiet --hard @{u} >/dev/null
@@ -27,31 +46,91 @@ function git_fetch_and_reset () {
     git clean --quiet -df >/dev/null
     git reset --quiet --hard @{u} >/dev/null
     git submodule update --init --recursive
+
 }
 
-function ansible_playbook() {
-  arg=("$@")
+run_playbook_cb () {
 
-  if [[ $arg =~ "settings" ]]; then
-     SETTINGS_SKIP_TAG=""
-  else
-     SETTINGS_SKIP_TAG="--skip-tags settings"
-  fi
+    local tags skip_tags
 
-  cd "${CLOUDBOX_REPO}"
+    tags="--tags $1"
+    [[ ! -z "$2" ]] && skip_tags="--skip-tags $2"
 
-  echo "" > cloudbox.log
+    echo "" > "${CLOUDBOX_LOGFILE_PATH}"
 
-  '/usr/local/bin/ansible-playbook' \
-    ${CLOUDBOX_REPO}/cloudbox.yml \
-    --become \
-    ${SETTINGS_SKIP_TAG} \
-    --tags ${arg}
+    cd "${CLOUDBOX_REPO_PATH}"
+    "${ANSIBLE_PLAYBOOK_BINARY_PATH}" \
+      "${CLOUDBOX_PLAYBOOK_PATH}" \
+      --become \
+      ${skip_tags} \
+      ${tags}
 
-  cd - >/dev/null
+    cd - >/dev/null
+
 }
 
-function update () {
+run_playbook_cm () {
+
+    local tags skip_tags
+
+    tags="--tags $1"
+    [[ ! -z "$2" ]] && skip_tags="--skip-tags $2"
+
+    echo "" > "${COMMUNITY_LOGFILE_PATH}"
+
+    cd "${COMMUNITY_REPO_PATH}"
+    "${ANSIBLE_PLAYBOOK_BINARY_PATH}" \
+      "${COMMUNITY_PLAYBOOK_PATH}" \
+      --become \
+      ${skip_tags} \
+      ${tags}
+
+    cd - >/dev/null
+
+}
+
+install () {
+
+    # Variables
+    local arg=("$@")
+    declare tags
+    local tags_cb
+    local skip_tags_cb="settings"
+    local tags_cm
+    local skip_tags_cm="settings"
+
+    # Build Tag Arrays
+    tags=(${arg//,/ })
+    for i in "${!tags[@]}"
+    do
+        if [[ ${tags[i]} == cm-* ]]; then
+            tags_cm="${tags_cm}${tags_cm:+,}${tags[i]##cm-}"
+
+            if [[ "${tags[i]##cm-}" =~ "settings" ]]; then
+                skip_tags_cm=""
+            fi
+        else
+            tags_cb="${tags_cb}${tags_cb:+,}${tags[i]}"
+
+            if [[ "${tags[i]}" =~ "settings" ]]; then
+                skip_tags_cb=""
+            fi
+        fi
+    done
+
+    # Run Cloudbox Ansible Playbook
+    echo "Running Cloudbox Tags: "$tags_cb
+    echo ""
+    [[ ! -z "$tags_cb" ]] && run_playbook_cb $tags_cb $skip_tags_cb
+
+    # Run Community Ansible Playbook
+    echo "Running Community Tags: "$tags_cm
+    echo ""
+    [[ ! -z "$tags_cm" ]] && run_playbook_cm $tags_cm $skip_tags_cm
+
+}
+
+update () {
 
     declare -A old_object_ids
     declare -A new_object_ids
@@ -60,7 +139,7 @@ function update () {
 
     echo -e "Updating Cloudbox...\n"
 
-    cd "${CLOUDBOX_REPO}"
+    cd "${CLOUDBOX_REPO_PATH}"
 
     # Get Git Object IDs for config files
     for file in "${config_files[@]}"; do
@@ -82,13 +161,17 @@ function update () {
         fi
     done
 
-    $config_files_are_changed && ansible_playbook "settings" && echo -e '\n'
+    $config_files_are_changed && run_playbook_cb "settings" && echo -e '\n'
 
     echo -e "Updating Complete."
 
 }
 
-role=""  # Default to empty package
+################################
+# Argument Parser
+################################
+
+roles=""  # Default to empty role
 target=""  # Default to empty target
 
 # Parse options to the `cb` command
@@ -121,8 +204,8 @@ case "$subcommand" in
     ;;
 
   install)
-    role=${@}
-    ansible_playbook "${role}"
+    roles=${@}
+    install "${roles}"
     ;;
 
   *)
