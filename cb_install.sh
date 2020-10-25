@@ -11,7 +11,7 @@
 
 ## Variables
 VERBOSE=false
-CB_REPO="https://github.com/Cloudbox/cb.git"
+CB_REPO="https://github.com/saltydk/cb.git"
 CB_PATH="/srv/git/cb"
 CB_INSTALL_SCRIPT="$CB_PATH/cb_install.sh"
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
