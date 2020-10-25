@@ -36,7 +36,6 @@ readonly PYTHON_CMD_SUFFIX="-m pip install \
                               --upgrade \
                               --force-reinstall"
 readonly PYTHON3_CMD="python3 $PYTHON_CMD_SUFFIX"
-readonly PYTHON2_CMD="python $PYTHON_CMD_SUFFIX"
 readonly PIP="9.0.3"
 readonly ANSIBLE=">=2.9,<2.10"
 
@@ -113,10 +112,7 @@ apt-get install -y --reinstall \
     libssl-dev \
     libffi-dev \
     python3-dev \
-    python3-pip \
-    python-dev \
-    python-pip \
-    python-apt
+    python3-pip
 
 ## Install pip3 Dependencies
 $PYTHON3_CMD \
@@ -126,20 +122,9 @@ $PYTHON3_CMD \
 $PYTHON3_CMD \
     pyOpenSSL \
     requests \
-    netaddr
-
-## Install pip2 Dependencies
-$PYTHON2_CMD \
-    pip==${PIP}
-$PYTHON2_CMD \
-    setuptools
-$PYTHON2_CMD \
-    pyOpenSSL \
-    requests \
     netaddr \
     jmespath \
     ansible$ANSIBLE
 
 ## Copy /usr/local/bin/pip to /usr/bin/pip
-[ -f /usr/local/bin/pip ] && cp /usr/local/bin/pip /usr/bin/pip
 [ -f /usr/local/bin/pip3 ] && cp /usr/local/bin/pip3 /usr/bin/pip3
