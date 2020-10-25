@@ -62,9 +62,10 @@ if [ -d "$CB_PATH" ]; then
 fi
 
 # Clone CB repo
+echo "Clone CB repo"
 run_cmd mkdir -p /srv/git
 run_cmd git clone --branch develop "${CB_REPO}" "$CB_PATH"
-
+echo "Clone CB repo - Done"
 # Set chmod +x on script files
 run_cmd chmod +x $CB_PATH/*.sh
 
