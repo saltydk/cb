@@ -31,18 +31,11 @@ function git_fetch_and_reset () {
 function ansible_playbook() {
   arg=("$@")
 
-  if [[ $arg =~ "settings" ]]; then
-     SETTINGS_SKIP_TAG=""
-  else
-     SETTINGS_SKIP_TAG="--skip-tags settings"
-  fi
-
   cd "${CLOUDBOX_REPO}"
 
   '/usr/local/bin/ansible-playbook' \
     ${CLOUDBOX_REPO}/cloudbox.yml \
     --become \
-    ${SETTINGS_SKIP_TAG} \
     --tags ${arg}
 
   cd - >/dev/null
